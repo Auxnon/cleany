@@ -1,0 +1,7 @@
+# Go build artifacts
+cleany
+*.exe
+/dist/
+
+# Dependency cache
+vendor/
