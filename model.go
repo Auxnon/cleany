@@ -166,8 +166,10 @@ func (m *model) clampOffset() {
 }
 
 // visibleRows returns the number of list rows that fit in the terminal.
-const headerLines = 4 // title + blank + stats/hints + blank
-const footerLines = 2 // error line (blank + message)
+// headerLines accounts for: title line, blank line, stats/hints line, blank line.
+// footerLines accounts for: blank line, error message line.
+const headerLines = 4
+const footerLines = 2
 
 func (m model) visibleRows() int {
 	if m.height == 0 {
@@ -251,7 +253,8 @@ func (m model) listView() string {
 		visible := m.visibleRows()
 		total := len(m.dirs)
 		if total > visible {
-			scrollInfo = fmt.Sprintf("  %s", dimStyle.Render(fmt.Sprintf("[%d-%d/%d]", m.offset+1, min(m.offset+visible, total), total)))
+			scrollText := fmt.Sprintf("[%d-%d/%d]", m.offset+1, min(m.offset+visible, total), total)
+			scrollInfo = fmt.Sprintf("  %s", dimStyle.Render(scrollText))
 		}
 
 		b.WriteString(fmt.Sprintf("%s  %s%s\n\n",
