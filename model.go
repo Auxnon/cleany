@@ -42,6 +42,7 @@ type model struct {
 	dirs     []string // all empty dirs found
 	selected []bool   // parallel slice: true = will be deleted
 	cursor   int      // list cursor
+	offset   int      // first visible item index (for scrolling)
 	state    viewState
 	deleted  int    // count of successfully deleted dirs
 	lastErr  string // last error message
@@ -106,11 +107,13 @@ func (m model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	case "up", "k":
 		if m.cursor > 0 {
 			m.cursor--
+			m.clampOffset()
 		}
 
 	case "down", "j":
 		if m.cursor < len(m.dirs)-1 {
 			m.cursor++
+			m.clampOffset()
 		}
 
 	case " ":
@@ -147,6 +150,39 @@ func (m model) handleListKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 	}
 
 	return m, nil
+}
+
+// clampOffset adjusts m.offset so the cursor is always within the visible window.
+func (m *model) clampOffset() {
+	visible := m.visibleRows()
+	if visible <= 0 {
+		return
+	}
+	if m.cursor < m.offset {
+		m.offset = m.cursor
+	} else if m.cursor >= m.offset+visible {
+		m.offset = m.cursor - visible + 1
+	}
+}
+
+// visibleRows returns the number of list rows that fit in the terminal.
+// headerLines accounts for: title line, blank line, stats/hints line, blank line.
+// footerLines accounts for: blank line, error message line.
+const headerLines = 4
+const footerLines = 2
+
+func (m model) visibleRows() int {
+	if m.height == 0 {
+		return 20 // sensible default before first WindowSizeMsg
+	}
+	h := m.height - headerLines
+	if m.lastErr != "" {
+		h -= footerLines
+	}
+	if h < 1 {
+		return 1
+	}
+	return h
 }
 
 func (m model) handleConfirmKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
@@ -211,12 +247,28 @@ func (m model) listView() string {
 				numSelected++
 			}
 		}
-		b.WriteString(fmt.Sprintf("%s  %s\n\n",
-			dimStyle.Render(fmt.Sprintf("%d/%d selected", numSelected, len(m.dirs))),
+
+		// Scroll indicator suffix
+		scrollInfo := ""
+		visible := m.visibleRows()
+		total := len(m.dirs)
+		if total > visible {
+			scrollText := fmt.Sprintf("[%d-%d/%d]", m.offset+1, min(m.offset+visible, total), total)
+			scrollInfo = fmt.Sprintf("  %s", dimStyle.Render(scrollText))
+		}
+
+		b.WriteString(fmt.Sprintf("%s  %s%s\n\n",
+			dimStyle.Render(fmt.Sprintf("%d/%d selected", numSelected, total)),
 			helpStyle.Render("[↑/↓] move  [space] toggle  [a] all  [d/del] delete  [q] quit"),
+			scrollInfo,
 		))
 
-		for i, dir := range m.dirs {
+		end := m.offset + visible
+		if end > total {
+			end = total
+		}
+		for i := m.offset; i < end; i++ {
+			dir := m.dirs[i]
 			cursor := "  "
 			if i == m.cursor {
 				cursor = cursorStyle.Render("▶ ")
@@ -241,6 +293,13 @@ func (m model) listView() string {
 	}
 
 	return b.String()
+}
+
+func min(a, b int) int {
+	if a < b {
+		return a
+	}
+	return b
 }
 
 func (m model) confirmView() string {

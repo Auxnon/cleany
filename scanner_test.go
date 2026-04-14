@@ -16,7 +16,7 @@ func TestFindEmptyDirs_none(t *testing.T) {
 	}
 	f.Close()
 
-	dirs, err := findEmptyDirs(root)
+	dirs, err := findEmptyDirs(root, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -32,7 +32,7 @@ func TestFindEmptyDirs_single(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	dirs, err := findEmptyDirs(root)
+	dirs, err := findEmptyDirs(root, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -57,7 +57,8 @@ func TestFindEmptyDirs_nestedEmpty(t *testing.T) {
 		}
 	}
 
-	dirs, err := findEmptyDirs(root)
+	// Recursive mode: should find b and c.
+	dirs, err := findEmptyDirs(root, true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -74,12 +75,21 @@ func TestFindEmptyDirs_nestedEmpty(t *testing.T) {
 			t.Fatalf("expected %v, got %v", want, dirs)
 		}
 	}
+
+	// Shallow mode: only direct children of root. a/ is non-empty, c/ is empty.
+	shallow, err := findEmptyDirs(root, false)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if len(shallow) != 1 || shallow[0] != c {
+		t.Fatalf("shallow: expected [%s], got %v", c, shallow)
+	}
 }
 
 func TestFindEmptyDirs_skipRootItself(t *testing.T) {
 	// An empty root should not include itself.
 	root := t.TempDir()
-	dirs, err := findEmptyDirs(root)
+	dirs, err := findEmptyDirs(root, false)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

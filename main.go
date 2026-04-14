@@ -1,6 +1,7 @@
 package main
 
 import (
+	"flag"
 	"fmt"
 	"os"
 
@@ -8,10 +9,13 @@ import (
 )
 
 func main() {
+	recursive := flag.Bool("r", false, "recursively search for empty directories")
+	flag.Parse()
+
 	// Determine root directory.
 	root := "."
-	if len(os.Args) > 1 {
-		root = os.Args[1]
+	if flag.NArg() > 0 {
+		root = flag.Arg(0)
 	}
 
 	// Resolve to absolute path for nicer display.
@@ -24,7 +28,7 @@ func main() {
 
 	fmt.Printf("Scanning %s …\n", root)
 
-	dirs, err := findEmptyDirs(root)
+	dirs, err := findEmptyDirs(root, *recursive)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "cleany: %v\n", err)
 		os.Exit(1)
