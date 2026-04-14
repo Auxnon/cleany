@@ -117,12 +117,14 @@ func TestIsEmptyDir(t *testing.T) {
 }
 
 func TestAbsPath(t *testing.T) {
-	abs, err := absPath("/tmp")
+	// Use a temp dir so the test works on both Windows and Linux.
+	tmp := t.TempDir()
+	abs, err := absPath(tmp)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if abs != "/tmp" {
-		t.Fatalf("expected /tmp, got %s", abs)
+	if abs != tmp {
+		t.Fatalf("expected %s, got %s", tmp, abs)
 	}
 
 	wd, _ := os.Getwd()
